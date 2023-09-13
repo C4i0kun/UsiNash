@@ -1,49 +1,49 @@
-from .Competitors import Competitor
+from power_plant import PowerPlant
 
 import random
 import numpy as np
 
-
-class Consumer:
+class Worker:
     def __init__(self, mean, std):
-        self.money = max(np.random.normal(mean, std), 0)
-        self.max_buying_price = self.money / 2
+        self.expected_salary = max(np.random.normal(mean, std), 0)
+        self.min_salary = self.expected_salary / 2
         self.steps_to_max = 100
 
-    def update_max_buying_price(self):
-        if self.steps_to_max > 0:
-            y_0 = self.max_buying_price / self.money
+    def update_expected_salary(self):
+        if self.steps_to_max > 0 and self.expected_salary < self.min_salary:
+            y_0 = self.min_salary / self.expected_salary
             x_0 = 2 * np.arcsin(y_0) / np.pi
             dx = (1 - x_0) / self.steps_to_max
             x = x_0 + dx
-            y = np.sin(np.pi * x / 2)
-            self.max_buying_price = self.money * y
+            y = np.arcsin(np.pi * x / 2)
+            self.expected_salary = self.expected_salary * y
             self.steps_to_max -= 1
 
-    def can_buy(self, price):
-        return True if self.money > price else False
+    def will_accept_salary(self, salary):
+        return True if self.expected_salary < salary else False
 
-    def will_buy(self, price):
-        return True if self.max_buying_price > price else False
+    def can_accept_salary(self, salary):
+        return True if self.min_salary < salary else False
 
 
 class Environment:
     def __init__(
         self,
-        num_competitors=2,
-        new_buyers_per_step=10,
-        buyers_mean_money=100,
-        buyers_std_dev_money=250,
+        num_power_plants=2,
+        new_workers_per_step=10,
+        workers_mean_salary=100,
+        workers_std_dev_salary=250,
     ):
-        self.competitors = []
-        self.actions = [None] * num_competitors
-        for i in range(num_competitors):
-            self.competitors.append(Competitor())
+        self.power_plants = []
+        self.proposed_salaries = [None] * num_power_plants
+        self.workers_needed = [None] * num_power_plants
+        for i in range(num_power_plants):
+            self.power_plants.append(PowerPlant())
 
-        self.buyers = []
-        self.new_buyers_per_step = new_buyers_per_step
-        self.buyers_mean_money = buyers_mean_money
-        self.buyers_std_dev_money = buyers_std_dev_money
+        self.workers = []
+        self.new_workers_per_step = new_workers_per_step
+        self.workers_mean_salary = workers_mean_salary
+        self.workers_std_dev_salary = workers_std_dev_salary
 
     def run_simulation(self, steps=100):
         for i in range(steps):
@@ -51,39 +51,54 @@ class Environment:
             self.step()
 
     def set_actions(self):
-        for index, competitor in enumerate(self.competitors):
-            self.actions[index] = competitor.action
+        for index, power_plant in enumerate(self.power_plants):
+            power_plant.run()
+            self.proposed_salaries[index] = power_plant.proposed_salary
+            self.workers_needed[index] = power_plant.workers_needed
 
     def step(self):
-        # new buyers arrive
-        for i in range(self.new_buyers_per_step):
-            self.buyers.append(
-                Consumer(self.buyers_mean_money, self.buyers_std_dev_money)
+        # new possible workers arrive
+        for i in range(self.new_workers_per_step):
+            self.workers.append(
+                Worker(self.workers_mean_salary, self.workers_std_dev_salary)
             )
 
-        # sort competitors by price
-        valid_competitors = []
-        for competitor in self.competitors:
+        # sort competitors by salary (biggest salary first)
+        valid_power_plants = []
+        for power_plant in self.power_plants:
             if (
-                competitor.action is not None
-                and competitor.product > 0
+                power_plant.proposed_salary is not None
+                and power_plant.workers_needed > 0
             ):
-                valid_competitors.append(competitor)
+                valid_power_plants.append(power_plant)
 
-        competitors_ordered = sorted(valid_competitors, key=lambda x: x.action)
+        power_plants_ordered = sorted(valid_power_plants, key=lambda x: x.proposed_salary, reverse=True)
 
         # randomly sort
-        buyers_randomized = random.shuffle(self.buyers)
+        workers_randomized = self.workers.copy()
+        random.shuffle(self.workers)
 
-        # buyers prefer lower prices
-        while len(buyers_randomized) > 0 and len(competitors_ordered) > 0:
-            buyer = buyers_randomized.pop(0)
-            competitor = competitors_ordered.pop(0)
+        # workers prefer higher prices
+        while len(workers_randomized) > 0 and len(power_plants_ordered) > 0:
+            worker = workers_randomized.pop(0)
+            power_plant = power_plants_ordered.pop(0)
 
-            if buyer.can_buy(competitor.action) and buyer.will_buy(competitor.action):
-                self.buyers.remove(buyer)
-                competitor.cash += competitor.action
-                competitor.products -= 1
+            if worker.can_accept_salary(power_plant.proposed_salary) and worker.can_accept_salary(power_plant.proposed_salary):
+                self.workers.remove(worker)
+                power_plant.workers.append({"salary": power_plant.proposed_salary, "steps_to_work": 30 + 1})
+                power_plant.workers_needed -= 1
 
-            if competitor.products > 0:
-                competitors_ordered.insert(0)
+            if power_plant.workers_needed > 0:
+                power_plants_ordered.insert(0, power_plant)
+
+        # update unemployed workers expected salary
+        for worker in self.workers:
+            worker.update_expected_salary()
+
+        # update powerplant states
+        for power_plant in self.power_plants:
+            power_plant.update_state()
+
+        
+
+        
