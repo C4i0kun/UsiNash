@@ -85,7 +85,7 @@ class Environment:
 
             if worker.can_accept_salary(power_plant.proposed_salary) and worker.can_accept_salary(power_plant.proposed_salary):
                 self.workers.remove(worker)
-                power_plant.workers.append({"salary": power_plant.proposed_salary, "steps_to_work": 30 + 1})
+                power_plant.workers.append({"salary": power_plant.proposed_salary, "steps_to_work": 100 + 1})
                 power_plant.workers_needed -= 1
 
             if power_plant.workers_needed > 0:
