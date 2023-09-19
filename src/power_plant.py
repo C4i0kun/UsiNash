@@ -1,5 +1,8 @@
-class PowerPlant:
-    def __init__(self, size=1):
+from spade_game.player import Player
+
+class PowerPlant(Player):
+    def __init__(self, jid, password, server_jid, size=1):
+        super().__init__(jid, password, server_jid)
         self.size = size
         self.cash = 1000
         self.workers = []
@@ -17,9 +20,7 @@ class PowerPlant:
         self.profit_hist = []
         self.num_workers_hist = []
 
-    def run(self):
-        self.decide_action()
-
+    """
     def update_state(self):
         salary_expenses = 0
         for worker in self.workers:
@@ -42,6 +43,7 @@ class PowerPlant:
 
         # next step
         self.step += 1
+    """
 
     def decide_action(self):
         # simple action: always looking for 1 worker
